@@ -1,4 +1,19 @@
-import React, { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  runTransaction,
+  serverTimestamp,
+  updateDoc,
+  where
+} from "firebase/firestore";
+import { auth, db } from "./firebase";
 import {
   Compass,
   ArrowUpRight,
@@ -27,12 +42,45 @@ import {
   Layers,
   Sparkles,
   Sun,
-  Moon,
-  Check,
-  AlertCircle
+  Moon
 } from "lucide-react";
 
 const BRAND_LOGO = `${import.meta.env.BASE_URL}image.png`;
+const firebaseConfigured = Boolean(auth && db);
+
+async function compressImageFile(file) {
+  if (!file.type.startsWith("image/")) throw new Error("Choose an image file.");
+
+  const image = await createImageBitmap(file);
+  const maxDataUrlLength = 700 * 1024;
+  let scale = Math.min(1, 1280 / Math.max(image.width, image.height));
+  let quality = 0.82;
+  let dataUrl;
+
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Your browser could not prepare this image.");
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    dataUrl = canvas.toDataURL("image/jpeg", quality);
+    if (dataUrl.length <= maxDataUrlLength) {
+      image.close();
+      return dataUrl;
+    }
+    if (quality > 0.58) quality -= 0.08;
+    else {
+      scale *= 0.8;
+      quality = 0.74;
+    }
+  }
+
+  image.close();
+  throw new Error("This image could not be compressed small enough to store in Firestore.");
+}
 
 // Curated architectural fallback/starter presets representing Tamil Nadu & Modern Projects
 const STUDIO_PRESETS = [
@@ -88,9 +136,11 @@ export default function App() {
 
   // Admin Studio Management
   const [adminViewOpen, setAdminViewOpen] = useState(false);
-  const [adminTab, setAdminTab] = useState("projects"); // "projects" | "audits"
+  const [adminTab, setAdminTab] = useState("projects");
   const [showPresetModal, setShowPresetModal] = useState(false);
   const adminFileInputRef = useRef(null);
+  const hasProjectsSnapshot = useRef(false);
+  const hasReviewsSnapshot = useRef(false);
 
   const [heroSlide, setHeroSlide] = useState(0);
   const heroSlides = [
@@ -218,6 +268,9 @@ export default function App() {
       status: "approved"
     }
   ]);
+  const [inquiries, setInquiries] = useState([]);
+  const [inquiryForm, setInquiryForm] = useState({ name: "", phone: "", email: "", scope: "Elevation Design", details: "" });
+  const [inquirySuccessMsg, setInquirySuccessMsg] = useState("");
 
   // Client review submission state
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -233,111 +286,229 @@ export default function App() {
   const customerFileInputRef = useRef(null);
   const [reviewSuccessMsg, setReviewSuccessMsg] = useState("");
 
-  const handleLoginSubmit = (e) => {
+  useEffect(() => {
+    if (!firebaseConfigured || !db) return undefined;
+
+    const stopProjects = onSnapshot(
+      query(collection(db, "projects"), orderBy("createdAt", "desc")),
+      (snapshot) => {
+        if (snapshot.empty && !hasProjectsSnapshot.current) return;
+        hasProjectsSnapshot.current = true;
+        setProjects(snapshot.docs.map((projectDoc, index) => {
+          const data = projectDoc.data();
+          return {
+            ...data,
+            id: projectDoc.id,
+            number: data.number || String(index + 1).padStart(2, "0"),
+            name: data.title || data.name,
+            img: data.imageUrl || data.img
+          };
+        }));
+      },
+      (error) => console.error("Projects listener failed:", error)
+    );
+
+    const reviewsQuery = userRole === "admin"
+      ? query(collection(db, "reviews"), orderBy("createdAt", "desc"))
+      : query(collection(db, "reviews"), where("status", "==", "approved"), orderBy("createdAt", "desc"));
+    const stopReviews = onSnapshot(
+      reviewsQuery,
+      (snapshot) => {
+        if (snapshot.empty && !hasReviewsSnapshot.current) return;
+        hasReviewsSnapshot.current = true;
+        setReviews(snapshot.docs.map((reviewDoc) => ({ id: reviewDoc.id, ...reviewDoc.data() })));
+      },
+      (error) => console.error("Reviews listener failed:", error)
+    );
+    const stopSeedMarker = onSnapshot(doc(db, "siteConfig", "initialContent"), (snapshot) => {
+      if (!snapshot.exists()) return;
+      if (!hasProjectsSnapshot.current) {
+        hasProjectsSnapshot.current = true;
+        setProjects([]);
+      }
+      if (!hasReviewsSnapshot.current) {
+        hasReviewsSnapshot.current = true;
+        setReviews([]);
+      }
+    }, (error) => console.error("Initial content marker listener failed:", error));
+
+    if (userRole !== "admin") return () => {
+      stopProjects();
+      stopReviews();
+      stopSeedMarker();
+    };
+
+    const stopInquiries = onSnapshot(
+      query(collection(db, "inquiries"), orderBy("createdAt", "desc")),
+      (snapshot) => setInquiries(snapshot.docs.map((inquiryDoc) => ({ id: inquiryDoc.id, ...inquiryDoc.data() }))),
+      (error) => console.error("Inquiries listener failed:", error)
+    );
+
+    return () => {
+      stopProjects();
+      stopReviews();
+      stopSeedMarker();
+      stopInquiries();
+    };
+  }, [userRole]);
+
+  useEffect(() => {
+    if (!auth) return undefined;
+    return onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setUserRole("guest");
+        return;
+      }
+      const token = await user.getIdTokenResult();
+      if (token.claims.admin === true) {
+        setUserRole("admin");
+        setAdminViewOpen(true);
+      } else {
+        setUserRole("guest");
+        await signOut(auth);
+        setAdminAuthError("This Firebase account is not authorized as an administrator.");
+      }
+    });
+  }, []);
+
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setAdminAuthError("");
+    if (!auth || !db) {
+      setAdminAuthError("Firebase is not configured. Add the VITE_FIREBASE_* values to your environment.");
+      return;
+    }
 
-    // Verified Credentials check
-    if (adminEmailInput === "admin@srconstruction.com" && adminPasswordInput === "admin@123") {
-      setUserRole("admin");
+    try {
+      const { user } = await signInWithEmailAndPassword(auth, adminEmailInput, adminPasswordInput);
+      const token = await user.getIdTokenResult(true);
+      if (token.claims.admin !== true) {
+        await signOut(auth);
+        throw new Error("This Firebase account is not authorized as an administrator.");
+      }
+
+      await runTransaction(db, async (transaction) => {
+        const marker = doc(db, "siteConfig", "initialContent");
+        const markerSnapshot = await transaction.get(marker);
+        if (markerSnapshot.exists()) return;
+
+        transaction.set(marker, { initializedAt: serverTimestamp() });
+        projects.forEach((project) => {
+          transaction.set(doc(db, "projects", project.id), {
+            title: project.name,
+            category: project.category,
+            imageUrl: project.img,
+            number: project.number,
+            year: project.year,
+            location: project.location,
+            area: project.area,
+            description: project.description,
+            createdAt: serverTimestamp()
+          });
+        });
+        reviews.forEach((review) => {
+          transaction.set(doc(db, "reviews", review.id), { ...review, createdAt: serverTimestamp() });
+        });
+      });
+
       setAuthModalOpen(false);
-      setAdminViewOpen(true);
       setAdminPasswordInput("");
-    } else {
-      setAdminAuthError("Invalid credentials. Access restricted to authorized administrator.");
+    } catch (error) {
+      setAdminAuthError(error.message || "Unable to sign in. Check the Firebase account credentials.");
     }
   };
 
   // Upload handler for device gallery / camera files
-  const handleAdminImageUpload = (e) => {
+  const handleAdminImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewProject((prev) => ({ ...prev, img: reader.result }));
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedImage = await compressImageFile(file);
+        setNewProject((prev) => ({ ...prev, img: compressedImage }));
+      } catch (error) {
+        alert(error.message || "Unable to prepare this project image.");
+      }
     }
   };
 
-  const handleCustomerImageUpload = (e) => {
+  const handleCustomerImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCustomerReview((prev) => ({ ...prev, photo: reader.result }));
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedImage = await compressImageFile(file);
+        setCustomerReview((prev) => ({ ...prev, photo: compressedImage }));
+      } catch (error) {
+        alert(error.message || "Unable to prepare this review image.");
+      }
     }
   };
 
   // Add new project: instantly connects and displays on main user-facing page
-  const handleAddProject = (e) => {
+  const handleAddProject = async (e) => {
     e.preventDefault();
     if (!newProject.name.trim() || !newProject.img) {
       alert("Please enter a project title and select a photo from your device.");
       return;
     }
 
-    const created = {
-      id: `PRJ-${Date.now()}`,
-      number: String(projects.length + 1).padStart(2, "0"),
-      name: newProject.name.trim(),
-      category: newProject.category,
-      year: newProject.year || "2026",
-      location: newProject.location || "Tamil Nadu",
-      area: newProject.area || "Custom Footprint",
-      img: newProject.img,
-      description:
-        newProject.description.trim() ||
-        "Custom designed and executed by Ramesh . Ramesh Cons with premium materials, precision engineering, and traditional expertise."
-    };
-
-    setProjects([created, ...projects]);
-    setNewProject({
-      name: "",
-      category: "Elevation Design",
-      year: "2026",
-      location: "Cuddalore & Regional Sites",
-      area: "",
-      description: "",
-      img: ""
-    });
-    alert("Project published! It is now live on the public website.");
+    if (!db) return alert("Firebase is not configured. Project changes cannot be saved.");
+    try {
+      await addDoc(collection(db, "projects"), {
+        title: newProject.name.trim(),
+        category: newProject.category,
+        imageUrl: newProject.img,
+        year: newProject.year || "2026",
+        location: newProject.location || "Tamil Nadu",
+        area: newProject.area || "Custom Footprint",
+        description: newProject.description.trim() || "Custom designed and executed by Ramesh . Ramesh Cons with premium materials, precision engineering, and traditional expertise.",
+        createdAt: serverTimestamp()
+      });
+      setNewProject({ name: "", category: "Elevation Design", year: "2026", location: "Cuddalore & Regional Sites", area: "", description: "", img: "" });
+      alert("Project published to the live portfolio.");
+    } catch (error) {
+      alert(error.message || "Unable to publish the project.");
+    }
   };
 
   // Delete project: removes instantly from both Admin Desk and Public User View
-  const handleDeleteProject = (id, projectName) => {
+  const handleDeleteProject = async (id, projectName) => {
     if (window.confirm(`Are you sure you want to permanently delete "${projectName || 'this project'}" from the live website?`)) {
-      setProjects((prev) => prev.filter((p) => p.id !== id));
-      if (selectedProject?.id === id) {
-        setSelectedProject(null);
+      try {
+        if (!db) throw new Error("Firebase is not configured.");
+        await deleteDoc(doc(db, "projects", id));
+        if (selectedProject?.id === id) setSelectedProject(null);
+      } catch (error) {
+        alert(error.message || "Unable to delete the project.");
       }
     }
   };
 
   // Review submission by visitor (sent to pending moderation queue)
-  const handleSubmitReview = (e) => {
+  const handleSubmitReview = async (e) => {
     e.preventDefault();
     if (!customerReview.author.trim() || !customerReview.text.trim()) {
       alert("Please provide your name and review details.");
       return;
     }
 
-    const newRev = {
-      id: `REV-${Date.now()}`,
-      author: customerReview.author.trim().toUpperCase(),
-      role: customerReview.role.trim() || "Valued Client",
-      type: customerReview.type,
-      year: "2026",
-      rating: customerReview.rating,
-      photo: customerReview.photo || "",
-      text: customerReview.text.trim(),
-      status: "pending"
-    };
-
-    setReviews([newRev, ...reviews]);
-    setReviewSuccessMsg("Your review and handover photograph have been submitted for architectural verification.");
+    if (!db) return alert("Firebase is not configured. Reviews cannot be submitted.");
+    try {
+      await addDoc(collection(db, "reviews"), {
+        author: customerReview.author.trim().toUpperCase(),
+        role: customerReview.role.trim() || "Valued Client",
+        type: customerReview.type,
+        year: "2026",
+        rating: customerReview.rating,
+        photo: customerReview.photo || "",
+        text: customerReview.text.trim(),
+        status: "pending",
+        createdAt: serverTimestamp()
+      });
+      setReviewSuccessMsg("Your review and handover photograph have been submitted for verification.");
+    } catch (error) {
+      alert(error.message || "Unable to submit the review.");
+      return;
+    }
     setTimeout(() => {
       setReviewSuccessMsg("");
       setReviewModalOpen(false);
@@ -353,15 +524,43 @@ export default function App() {
   };
 
   // Moderate reviews: Admin can Approve, Reject, or Permanently Delete any review
-  const handleModerateReview = (id, newStatus) => {
-    setReviews((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r))
-    );
+  const handleModerateReview = async (id, newStatus) => {
+    try {
+      await updateDoc(doc(db, "reviews", id), { status: newStatus });
+    } catch (error) {
+      alert(error.message || "Unable to update the review.");
+    }
   };
 
-  const handleDeleteReview = (id, author) => {
+  const handleDeleteReview = async (id, author) => {
     if (window.confirm(`Permanently remove review by ${author} from the website?`)) {
-      setReviews((prev) => prev.filter((r) => r.id !== id));
+      try {
+        await deleteDoc(doc(db, "reviews", id));
+      } catch (error) {
+        alert(error.message || "Unable to delete the review.");
+      }
+    }
+  };
+
+  const handleSubmitInquiry = async (e) => {
+    e.preventDefault();
+    if (!db) return alert("Firebase is not configured. Inquiries cannot be submitted.");
+    try {
+      await addDoc(collection(db, "inquiries"), { ...inquiryForm, createdAt: serverTimestamp() });
+      setInquirySuccessMsg("Your consultation request has been received.");
+      setInquiryForm({ name: "", phone: "", email: "", scope: "Elevation Design", details: "" });
+      setTimeout(() => setInquirySuccessMsg(""), 5000);
+    } catch (error) {
+      alert(error.message || "Unable to submit the consultation request.");
+    }
+  };
+
+  const handleDeleteInquiry = async (id) => {
+    if (!window.confirm("Delete this consultation inquiry?")) return;
+    try {
+      await deleteDoc(doc(db, "inquiries", id));
+    } catch (error) {
+      alert(error.message || "Unable to delete the inquiry.");
     }
   };
 
@@ -465,8 +664,8 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => {
-                    setUserRole("guest");
-                    alert("Admin signed out. Switched back to visitor mode.");
+                    signOut(auth);
+                    setAdminViewOpen(false);
                   }}
                   title="Sign Out Admin"
                   className={`p-2 border transition-colors ${
@@ -1343,12 +1542,14 @@ export default function App() {
               </p>
 
               <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  alert("Consultation inquiry registered! Ramesh sir will respond to you shortly.");
-                }}
+                onSubmit={handleSubmitInquiry}
                 className="space-y-6 text-xs font-mono"
               >
+                {inquirySuccessMsg && (
+                  <div role="status" className="border border-emerald-700 bg-emerald-950/40 p-3 text-emerald-300">
+                    {inquirySuccessMsg}
+                  </div>
+                )}
                 <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="min-w-0">
                     <label className={isDark ? "block text-neutral-300 uppercase mb-2" : "block text-neutral-700 uppercase mb-2 font-bold"}>
@@ -1358,6 +1559,8 @@ export default function App() {
                       type="text"
                       required
                       placeholder="e.g. Sivakumar"
+                      value={inquiryForm.name}
+                      onChange={(e) => setInquiryForm({ ...inquiryForm, name: e.target.value })}
                       className={`block min-w-0 w-full min-h-12 border px-4 py-3 focus:outline-none focus:border-amber-500 font-sans text-xs ${
                         isDark ? "bg-neutral-950 border-neutral-800 text-white" : "bg-neutral-50 border-neutral-300 text-black"
                       }`}
@@ -1371,6 +1574,8 @@ export default function App() {
                       type="tel"
                       required
                       placeholder="9443658583"
+                      value={inquiryForm.phone}
+                      onChange={(e) => setInquiryForm({ ...inquiryForm, phone: e.target.value })}
                       className={`block min-w-0 w-full min-h-12 border px-4 py-3 focus:outline-none focus:border-amber-500 font-sans text-xs ${
                         isDark ? "bg-neutral-950 border-neutral-800 text-white" : "bg-neutral-50 border-neutral-300 text-black"
                       }`}
@@ -1386,6 +1591,8 @@ export default function App() {
                     <input
                       type="email"
                       placeholder="client@gmail.com"
+                      value={inquiryForm.email}
+                      onChange={(e) => setInquiryForm({ ...inquiryForm, email: e.target.value })}
                       className={`block min-w-0 w-full min-h-12 border px-4 py-3 focus:outline-none focus:border-amber-500 font-sans text-xs ${
                         isDark ? "bg-neutral-950 border-neutral-800 text-white" : "bg-neutral-50 border-neutral-300 text-black"
                       }`}
@@ -1396,6 +1603,8 @@ export default function App() {
                       PROJECT SCOPE *
                     </label>
                     <select
+                      value={inquiryForm.scope}
+                      onChange={(e) => setInquiryForm({ ...inquiryForm, scope: e.target.value })}
                       className={`block min-w-0 w-full min-h-12 border px-4 py-3 focus:outline-none focus:border-amber-500 font-sans text-xs ${
                         isDark ? "bg-neutral-950 border-neutral-800 text-white" : "bg-neutral-50 border-neutral-300 text-black"
                       }`}
@@ -1417,6 +1626,8 @@ export default function App() {
                     rows={4}
                     required
                     placeholder="Provide site location, plot dimensions, elevation concepts or temple specifications..."
+                    value={inquiryForm.details}
+                    onChange={(e) => setInquiryForm({ ...inquiryForm, details: e.target.value })}
                     className={`block min-w-0 w-full min-h-32 resize-y border p-4 focus:outline-none focus:border-amber-500 font-sans text-xs ${
                       isDark ? "bg-neutral-950 border-neutral-800 text-white" : "bg-neutral-50 border-neutral-300 text-black"
                     }`}
@@ -1894,6 +2105,23 @@ export default function App() {
                     </span>
                   )}
                 </button>
+                <button
+                  onClick={() => setAdminTab("inquiries")}
+                  className={`px-4 py-2 border uppercase tracking-wider font-bold transition-all ${
+                    adminTab === "inquiries"
+                      ? "bg-amber-500 text-black border-amber-500"
+                      : isDark
+                      ? "border-neutral-800 text-neutral-400 hover:text-white"
+                      : "border-neutral-300 text-neutral-600 hover:text-black"
+                  }`}
+                >
+                  <span>PROJECT INQUIRIES</span>
+                  {inquiries.length > 0 && (
+                    <span className="ml-2 bg-black text-amber-400 border border-amber-400 text-[10px] px-1.5 py-0.5">
+                      {inquiries.length}
+                    </span>
+                  )}
+                </button>
               </div>
 
               {/* TAB 1: ADD & MANAGE PROJECTS */}
@@ -2161,6 +2389,44 @@ export default function App() {
                       </div>
                     ))
                   )}
+                </div>
+              )}
+
+              {adminTab === "inquiries" && (
+                <div className="space-y-4">
+                  {inquiries.length === 0 ? (
+                    <div className={`border p-12 text-center font-mono text-xs uppercase ${
+                      isDark ? "border-neutral-800 text-neutral-500" : "border-neutral-300 text-neutral-600"
+                    }`}>
+                      NO CONSULTATION INQUIRIES HAVE BEEN RECEIVED.
+                    </div>
+                  ) : inquiries.map((inquiry) => (
+                    <article
+                      key={inquiry.id}
+                      className={`border p-5 ${isDark ? "border-neutral-800 bg-neutral-950" : "border-neutral-300 bg-white"}`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="text-base font-black uppercase">{inquiry.name}</h3>
+                          <p className="mt-1 text-xs font-mono text-amber-500 uppercase">
+                            {inquiry.scope} &bull; {inquiry.createdAt?.toDate?.().toLocaleString() || "Recently received"}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteInquiry(inquiry.id)}
+                          className="p-2 text-neutral-400 hover:text-red-500 border border-neutral-800 hover:border-red-500"
+                          title="Delete inquiry"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs font-mono">
+                        <a className="hover:text-amber-500" href={`tel:${inquiry.phone}`}>{inquiry.phone}</a>
+                        {inquiry.email && <a className="hover:text-amber-500" href={`mailto:${inquiry.email}`}>{inquiry.email}</a>}
+                      </div>
+                      <p className="mt-4 border border-neutral-800 bg-black/20 p-4 text-sm leading-relaxed whitespace-pre-wrap">{inquiry.details}</p>
+                    </article>
+                  ))}
                 </div>
               )}
             </div>
