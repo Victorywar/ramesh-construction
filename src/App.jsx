@@ -47,6 +47,11 @@ import {
 
 const BRAND_LOGO = `${import.meta.env.BASE_URL}image.png`;
 const firebaseConfigured = Boolean(auth && db);
+const ADMIN_EMAILS = new Set(["admin@srconstruction.com"]);
+
+function isAuthorizedAdmin(email) {
+  return ADMIN_EMAILS.has(String(email || "").trim().toLowerCase());
+}
 
 async function compressImageFile(file) {
   if (!file.type.startsWith("image/")) throw new Error("Choose an image file.");
@@ -359,14 +364,13 @@ export default function App() {
         setUserRole("guest");
         return;
       }
-      const token = await user.getIdTokenResult();
-      if (token.claims.admin === true) {
+      if (isAuthorizedAdmin(user.email)) {
         setUserRole("admin");
         setAdminViewOpen(true);
       } else {
         setUserRole("guest");
         await signOut(auth);
-        setAdminAuthError("This Firebase account is not authorized as an administrator.");
+        setAdminAuthError("This Firebase account email is not authorized as an administrator.");
       }
     });
   }, []);
@@ -381,10 +385,9 @@ export default function App() {
 
     try {
       const { user } = await signInWithEmailAndPassword(auth, adminEmailInput, adminPasswordInput);
-      const token = await user.getIdTokenResult(true);
-      if (token.claims.admin !== true) {
+      if (!isAuthorizedAdmin(user.email)) {
         await signOut(auth);
-        throw new Error("This Firebase account is not authorized as an administrator.");
+        throw new Error("This Firebase account email is not authorized as an administrator.");
       }
 
       await runTransaction(db, async (transaction) => {
