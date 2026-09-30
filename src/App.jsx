@@ -32,7 +32,7 @@ import {
   AlertCircle
 } from "lucide-react";
 
-const BRAND_LOGO = "/image.png";
+const BRAND_LOGO = `${import.meta.env.BASE_URL}image.png`;
 
 // Curated architectural fallback/starter presets representing Tamil Nadu & Modern Projects
 const STUDIO_PRESETS = [
