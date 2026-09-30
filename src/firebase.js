@@ -1,19 +1,16 @@
-import { getApp, getApps, initializeApp } from "firebase/app";
+import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: "AIzaSyC98S5VPkaJXuEdwzonBVnlKrfR90JvMls",
+  authDomain: "ramesh-construction-ab9fe.firebaseapp.com",
+  projectId: "ramesh-construction-ab9fe",
+  messagingSenderId: "556855819715",
+  appId: "1:556855819715:web:91cfbfbf819226c5f9d176",
+  measurementId: "G-RTYEFBB9L8"
 };
 
-const firebaseConfigured = Object.values(firebaseConfig).every(Boolean);
-const app = firebaseConfigured
-  ? getApps().length ? getApp() : initializeApp(firebaseConfig)
-  : null;
-
-export const auth = app ? getAuth(app) : null;
-export const db = app ? getFirestore(app) : null;
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
