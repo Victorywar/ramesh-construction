@@ -144,7 +144,6 @@ export default function App() {
   const [adminTab, setAdminTab] = useState("projects");
   const [showPresetModal, setShowPresetModal] = useState(false);
   const adminFileInputRef = useRef(null);
-  const hasProjectsSnapshot = useRef(false);
   const hasReviewsSnapshot = useRef(false);
 
   const [heroSlide, setHeroSlide] = useState(0);
@@ -166,64 +165,7 @@ export default function App() {
     }
   ];
 
-  // Core portfolio state - deleting here deletes immediately from user view
-  const [projects, setProjects] = useState([
-    {
-      id: "PRJ-01",
-      number: "01",
-      name: "Sri Murugan Temple Mandapam & Gopuram",
-      category: "Temple Design",
-      year: "2025",
-      location: "Tamil Nadu",
-      area: "12,000 sq.ft",
-      img: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=1600&q=80",
-      description: "Traditional sacred Dravidian temple architecture constructed with sculpted granite bas-reliefs, vimanam planning, and adherence to ancient Shilpa Shastras."
-    },
-    {
-      id: "PRJ-02",
-      number: "02",
-      name: "Contemporary Double-Height Elevation Villa",
-      category: "Elevation Design",
-      year: "2026",
-      location: "East Coast Road",
-      area: "5,800 sq.ft",
-      img: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=80",
-      description: "Distinctive geometric exterior elevation boasting cantilevered stone fins, integrated exterior mood lighting, and heat-resistant textured plaster."
-    },
-    {
-      id: "PRJ-03",
-      number: "03",
-      name: "Pillar & Floral Granite Stone Carvings",
-      category: "Carving Work",
-      year: "2025",
-      location: "Heritage Compound",
-      area: "Bespoke Sculptures",
-      img: "https://images.unsplash.com/photo-1608889175123-8ee362201f81?auto=format&fit=crop&w=1600&q=80",
-      description: "Handcrafted ornamental stonework, decorative door jambs, and monolithic Yali stone pillars sculpted by master sthapatis and craftsmen."
-    },
-    {
-      id: "PRJ-04",
-      number: "04",
-      name: "Minimalist Warm Oak & Teak Living Suite",
-      category: "Interior Design",
-      year: "2025",
-      location: "Urban Residency",
-      area: "3,400 sq.ft",
-      img: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1600&q=80",
-      description: "Curated interior architecture featuring acoustic wooden fluting, hidden ambient cove lighting, bespoke cabinetry, and open spatial planning."
-    },
-    {
-      id: "PRJ-05",
-      number: "05",
-      name: "Solid RCC Multi-Level Residential Build",
-      category: "Construction",
-      year: "2024",
-      location: "Cuddalore District",
-      area: "7,500 sq.ft",
-      img: "https://images.unsplash.com/photo-1541888946425-d0fbb186c5f7?auto=format&fit=crop&w=1600&q=80",
-      description: "Comprehensive end-to-end civil construction with rigorous seismic reinforcement, premium concrete mixtures, and turnkey finishing."
-    }
-  ]);
+  const [projects, setProjects] = useState([]);
 
   const [selectedProject, setSelectedProject] = useState(null);
 
@@ -295,10 +237,8 @@ export default function App() {
     if (!firebaseConfigured || !db) return undefined;
 
     const stopProjects = onSnapshot(
-      query(collection(db, "projects"), orderBy("createdAt", "desc")),
+      collection(db, "projects"),
       (snapshot) => {
-        if (snapshot.empty && !hasProjectsSnapshot.current) return;
-        hasProjectsSnapshot.current = true;
         setProjects(snapshot.docs.map((projectDoc, index) => {
           const data = projectDoc.data();
           return {
@@ -327,10 +267,6 @@ export default function App() {
     );
     const stopSeedMarker = onSnapshot(doc(db, "siteConfig", "initialContent"), (snapshot) => {
       if (!snapshot.exists()) return;
-      if (!hasProjectsSnapshot.current) {
-        hasProjectsSnapshot.current = true;
-        setProjects([]);
-      }
       if (!hasReviewsSnapshot.current) {
         hasReviewsSnapshot.current = true;
         setReviews([]);
@@ -396,19 +332,6 @@ export default function App() {
         if (markerSnapshot.exists()) return;
 
         transaction.set(marker, { initializedAt: serverTimestamp() });
-        projects.forEach((project) => {
-          transaction.set(doc(db, "projects", project.id), {
-            title: project.name,
-            category: project.category,
-            imageUrl: project.img,
-            number: project.number,
-            year: project.year,
-            location: project.location,
-            area: project.area,
-            description: project.description,
-            createdAt: serverTimestamp()
-          });
-        });
         reviews.forEach((review) => {
           transaction.set(doc(db, "reviews", review.id), { ...review, createdAt: serverTimestamp() });
         });
