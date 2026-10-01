@@ -14,3 +14,98 @@
     -webkit-font-smoothing: antialiased;
   }
 }
+
+.review-carousel-shell {
+  position: relative;
+}
+
+.review-carousel {
+  display: flex;
+  gap: 2rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.review-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.review-card {
+  flex: 0 0 calc((100% - 4rem) / 3);
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.review-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: grid;
+  width: 48px;
+  aspect-ratio: 1;
+  place-items: center;
+  transform: translateY(-50%);
+  color: #111;
+  background: #f59e0b;
+  border: 2px solid #fff;
+  box-shadow: 0 3px 14px rgb(0 0 0 / 45%);
+  cursor: pointer;
+}
+
+.review-carousel-arrow-left {
+  left: 0;
+}
+
+.review-carousel-arrow-right {
+  right: 0;
+}
+
+.review-carousel-arrow:focus-visible,
+.review-carousel:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+.hero-slide-image {
+  animation: hero-crossfade 700ms ease both;
+}
+
+@keyframes hero-crossfade {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-slide-image {
+    animation-duration: 1ms;
+  }
+}
+
+@media (max-width: 767px) {
+  .review-carousel {
+    gap: 1rem;
+  }
+
+  .review-card {
+    flex-basis: 83%;
+  }
+
+  .review-carousel-arrow {
+    width: 40px;
+  }
+
+  .review-carousel-arrow-left {
+    left: 4px;
+  }
+
+  .review-carousel-arrow-right {
+    right: 4px;
+  }
+}

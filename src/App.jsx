@@ -145,27 +145,46 @@ export default function App() {
   const [showPresetModal, setShowPresetModal] = useState(false);
   const adminFileInputRef = useRef(null);
   const hasReviewsSnapshot = useRef(false);
+  const reviewCarouselRef = useRef(null);
 
   const [heroSlide, setHeroSlide] = useState(0);
-  const heroSlides = [
-    {
-      img: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=80",
-      caption: "Bespoke Modern Elevation Villa",
-      spec: "ELEVATION & INTERIORS • 2026"
-    },
-    {
-      img: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=1600&q=80",
-      caption: "Sacred Temple Gopuram & Mandapam",
-      spec: "TRADITIONAL TEMPLE DESIGN • 2025"
-    },
-    {
-      img: "https://images.unsplash.com/photo-1608889175123-8ee362201f81?auto=format&fit=crop&w=1600&q=80",
-      caption: "Classical Stone Carving & Pillar Details",
-      spec: "ORNAMENTAL CRAFTSMANSHIP • 2025"
-    }
-  ];
+  const [isHeroPaused, setIsHeroPaused] = useState(false);
 
   const [projects, setProjects] = useState([]);
+  const heroSlides = [
+    {
+      match: /civil|construction|turnkey/i,
+      title: "Residential Civil Construction",
+      category: "TURNKEY HOME EXECUTION",
+      img: "https://images.unsplash.com/photo-1541888946425-d0fbb186c5f7?auto=format&fit=crop&w=1600&q=80"
+    },
+    {
+      match: /elevation|facade/i,
+      title: "Modern Exterior Elevation",
+      category: "ELEVATION DESIGN & 3D FACADES",
+      img: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=80"
+    },
+    {
+      match: /temple|carving/i,
+      title: "Temple Gopuram & Mandapam",
+      category: "TEMPLE STONE CARVING WORKS",
+      img: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=1600&q=80"
+    },
+    {
+      match: /interior|woodwork/i,
+      title: "Bespoke Interior Woodwork",
+      category: "INTERIORS & LIVING SPACES",
+      img: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1600&q=80"
+    }
+  ].map((slide) => {
+    const project = projects.find((item) => slide.match.test(item.category || ""));
+    return {
+      title: project?.name || slide.title,
+      category: project?.category || slide.category,
+      year: project?.year || "2026",
+      img: project?.img || slide.img
+    };
+  });
 
   const [selectedProject, setSelectedProject] = useState(null);
 
@@ -174,7 +193,7 @@ export default function App() {
     name: "",
     category: "Elevation Design",
     year: "2026",
-    location: "Cuddalore & Regional Sites",
+    location: "Chennai, Tamil Nadu",
     area: "",
     description: "",
     img: ""
@@ -211,7 +230,7 @@ export default function App() {
       year: "2024",
       rating: 5,
       photo: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1000&q=80",
-      text: "Ramesh . Ramesh Cons provided attentive craftsmanship from the woodwork to lighting. Their team understands client requirements and makes spaces both functional and luxurious.",
+      text: "SR Construction & Ramesh Builders provided attentive craftsmanship from the woodwork to lighting. Their team understands client requirements and makes spaces both functional and luxurious.",
       status: "approved"
     }
   ]);
@@ -238,7 +257,9 @@ export default function App() {
 
     const stopProjects = onSnapshot(
       collection(db, "projects"),
+      { includeMetadataChanges: true },
       (snapshot) => {
+        if (snapshot.metadata.fromCache) return;
         setProjects(snapshot.docs.map((projectDoc, index) => {
           const data = projectDoc.data();
           return {
@@ -258,7 +279,9 @@ export default function App() {
       : query(collection(db, "reviews"), where("status", "==", "approved"), orderBy("createdAt", "desc"));
     const stopReviews = onSnapshot(
       reviewsQuery,
+      { includeMetadataChanges: true },
       (snapshot) => {
+        if (snapshot.metadata.fromCache) return;
         if (snapshot.empty && !hasReviewsSnapshot.current) return;
         hasReviewsSnapshot.current = true;
         setReviews(snapshot.docs.map((reviewDoc) => ({ id: reviewDoc.id, ...reviewDoc.data() })));
@@ -310,6 +333,14 @@ export default function App() {
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (isHeroPaused || heroSlides.length < 2) return undefined;
+    const intervalId = window.setInterval(() => {
+      setHeroSlide((current) => (current + 1) % heroSlides.length);
+    }, 4500);
+    return () => window.clearInterval(intervalId);
+  }, [heroSlides.length, heroSlide, isHeroPaused]);
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
@@ -384,12 +415,12 @@ export default function App() {
         category: newProject.category,
         imageUrl: newProject.img,
         year: newProject.year || "2026",
-        location: newProject.location || "Tamil Nadu",
+        location: newProject.location || "Chennai, Tamil Nadu",
         area: newProject.area || "Custom Footprint",
-        description: newProject.description.trim() || "Custom designed and executed by Ramesh . Ramesh Cons with premium materials, precision engineering, and traditional expertise.",
+        description: newProject.description.trim() || "Custom designed and executed by SR Construction & Ramesh Builders with premium materials, precision engineering, and traditional expertise.",
         createdAt: serverTimestamp()
       });
-      setNewProject({ name: "", category: "Elevation Design", year: "2026", location: "Cuddalore & Regional Sites", area: "", description: "", img: "" });
+      setNewProject({ name: "", category: "Elevation Design", year: "2026", location: "Chennai, Tamil Nadu", area: "", description: "", img: "" });
       alert("Project published to the live portfolio.");
     } catch (error) {
       alert(error.message || "Unable to publish the project.");
@@ -499,6 +530,17 @@ export default function App() {
 
   const approvedReviews = reviews.filter((r) => r.status === "approved");
   const pendingReviews = reviews.filter((r) => r.status === "pending");
+  const scrollReviews = (direction) => {
+    const carousel = reviewCarouselRef.current;
+    const firstCard = carousel?.querySelector(".review-card");
+    if (!carousel || !firstCard) return;
+
+    const gap = Number.parseFloat(getComputedStyle(carousel).columnGap) || 0;
+    carousel.scrollBy({
+      left: direction * (firstCard.getBoundingClientRect().width + gap),
+      behavior: "smooth"
+    });
+  };
 
   return (
     <div
@@ -526,7 +568,7 @@ export default function App() {
             >
               <img
                 src={BRAND_LOGO}
-                alt="SR Construction Golden Emblem"
+                alt="SR Construction & Ramesh Builders Golden Emblem"
                 className="w-full h-full object-cover object-center"
                 onError={() => setLogoError(true)}
               />
@@ -545,7 +587,7 @@ export default function App() {
                   isDark ? "text-neutral-400" : "text-neutral-500"
                 }`}
               >
-                RAMESH &bull; 
+                RAMESH BUILDERS
               </div>
             </div>
           </a>
@@ -666,7 +708,7 @@ export default function App() {
                     isDark ? "text-neutral-400" : "text-neutral-600 font-semibold"
                   }`}
                 >
-                  RAMESH  &bull; QUALITY ARCHITECTURE
+                  SR CONSTRUCTION &amp; RAMESH BUILDERS • QUALITY ARCHITECTURE
                 </span>
               </div>
 
@@ -718,26 +760,35 @@ export default function App() {
             </div>
 
             {/* Right Column (Hero Slideshow) */}
-            <div className="lg:col-span-5 relative mt-4 lg:mt-0">
+            <div
+              className="lg:col-span-5 relative mt-4 lg:mt-0"
+              onMouseEnter={() => setIsHeroPaused(true)}
+              onMouseLeave={() => setIsHeroPaused(false)}
+              onFocus={() => setIsHeroPaused(true)}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) setIsHeroPaused(false);
+              }}
+            >
               <div
                 className={`relative aspect-[4/5] sm:aspect-[4/3] lg:aspect-[4/5] w-full border overflow-hidden ${
                   isDark ? "bg-neutral-900 border-neutral-800" : "bg-neutral-100 border-neutral-300 shadow-lg"
                 }`}
               >
                 <img
+                  key={heroSlide}
                   src={heroSlides[heroSlide].img}
-                  alt={heroSlides[heroSlide].caption}
-                  className="w-full h-full object-cover transition-opacity duration-700"
+                  alt={heroSlides[heroSlide].title}
+                  className="hero-slide-image w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
 
                 <div className="absolute bottom-0 left-0 right-0 p-5 flex items-center justify-between text-xs font-mono">
                   <div>
                     <div className="text-white font-bold uppercase tracking-wider">
-                      {heroSlides[heroSlide].caption}
+                      {heroSlides[heroSlide].title}
                     </div>
                     <div className="text-amber-400 text-[10px] tracking-wider mt-0.5">
-                      {heroSlides[heroSlide].spec}
+                      {heroSlides[heroSlide].category} &bull; {heroSlides[heroSlide].year}
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
@@ -795,7 +846,7 @@ export default function App() {
               </h2>
               <div className="mt-4 inline-flex items-center gap-2">
                 <span className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                RAMESH &bull; RAMESH CONS
+                SR CONSTRUCTION &amp; RAMESH BUILDERS
                 </span>
               </div>
             </div>
@@ -807,7 +858,7 @@ export default function App() {
                     isDark ? "text-neutral-200" : "text-neutral-800"
                   }`}
                 >
-                  <strong className="font-bold">Ramesh Cons</strong> is a dedicated construction and design practice specializing in elevation design, interior design, temple architecture, and detailed carving work.
+                  <strong className="font-bold">SR Construction &amp; Ramesh Builders</strong> is a dedicated construction and design practice specializing in elevation design, interior design, temple architecture, and detailed carving work.
                 </p>
                 <p
                   className={`text-sm sm:text-base font-normal leading-relaxed ${
@@ -816,6 +867,14 @@ export default function App() {
                 >
                   With a focus on quality workmanship and detailed finishing, we work closely with clients to understand specific requirements and create spaces that are both visually appealing and structurally permanent.
                 </p>
+              </div>
+              <div className="mt-5">
+                <div className="text-sm font-black uppercase tracking-wider text-amber-500">
+                  27+ YEARS EXPERIENCE
+                </div>
+                <div className={`mt-1 text-xs uppercase ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                  Civil Engineering, Turnkey Construction &amp; Elevation
+                </div>
               </div>
 
               {/* Three Core Pillars */}
@@ -912,7 +971,7 @@ export default function App() {
                 isDark ? "text-neutral-400" : "text-neutral-600"
               }`}
             >
-              5 CORE DISCIPLINES BY RAMESH . RAMESH CONS
+              5 CORE DISCIPLINES BY SR CONSTRUCTION &amp; RAMESH BUILDERS
             </p>
           </div>
 
@@ -1250,12 +1309,26 @@ export default function App() {
             </button>
           </div>
 
-          {/* Reviews Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="review-carousel-shell">
+            <button
+              type="button"
+              onClick={() => scrollReviews(-1)}
+              className="review-carousel-arrow review-carousel-arrow-left"
+              aria-label="Scroll to previous reviews"
+            >
+              <ChevronLeft size={22} aria-hidden="true" />
+            </button>
+            <div
+              className="review-carousel"
+              ref={reviewCarouselRef}
+              role="region"
+              aria-label="Verified client reviews"
+              tabIndex={0}
+            >
             {approvedReviews.map((rev) => (
               <div
                 key={rev.id}
-                className={`border p-6 flex flex-col justify-between transition-colors relative ${
+                className={`review-card border p-6 flex flex-col justify-between transition-colors relative ${
                   isDark
                     ? "border-neutral-800 bg-neutral-950"
                     : "border-neutral-300 bg-neutral-50 shadow-sm"
@@ -1326,6 +1399,15 @@ export default function App() {
                 </div>
               </div>
             ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => scrollReviews(1)}
+              className="review-carousel-arrow review-carousel-arrow-right"
+              aria-label="Scroll to next reviews"
+            >
+              <ChevronRight size={22} aria-hidden="true" />
+            </button>
           </div>
         </div>
       </section>
@@ -1394,6 +1476,8 @@ export default function App() {
                     </div>
                     <div className={`mt-1 font-bold text-sm ${isDark ? "text-white" : "text-neutral-950"}`}>
                       Chennai, Tamil Nadu
+                      <br />
+                      Madurapakkam Main Road, Mambakkam, Chennai, Tamil Nadu - 600127
                     </div>
                   </div>
                 </div>
@@ -1435,7 +1519,7 @@ export default function App() {
               {/* Direct WhatsApp Action Button */}
               <div className="mt-8">
                 <a
-                  href="https://wa.me/919443658583?text=Hello%20Ramesh%20sir,%20I%20would%20like%20to%20consult%20regarding%20a%20project%20with%20SR%20Construction."
+                  href="https://wa.me/919443658583?text=Hello%20Ramesh%20sir,%20I%20would%20like%20to%20consult%20regarding%20a%20project%20with%20SR%20Construction%20%26%20Ramesh%20Builders."
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2.5 px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors shadow-lg"
@@ -1588,14 +1672,11 @@ export default function App() {
             <div className="md:col-span-5">
               <div className="flex items-center gap-3.5">
                 <div className="w-10 h-10 rounded-sm overflow-hidden border border-amber-500/50 bg-neutral-900 p-0.5 shrink-0">
-                  <img src={BRAND_LOGO} alt="SR Construction Logo" className="w-full h-full object-cover" />
+                  <img src={BRAND_LOGO} alt="SR Construction & Ramesh Builders Logo" className="w-full h-full object-cover" />
                 </div>
                 <div>
                   <div className={`font-black text-sm uppercase ${isDark ? "text-white" : "text-black"}`}>
-                    SR CONSTRUCTION
-                  </div>
-                  <div className="text-[10px] text-amber-500 font-mono uppercase tracking-widest font-bold">
-                    RAMESH &bull; RAMESH CONS
+                    SR CONSTRUCTION &amp; RAMESH BUILDERS
                   </div>
                 </div>
               </div>
@@ -1628,12 +1709,13 @@ export default function App() {
               <div>PROPRIETOR: <strong className={isDark ? "text-white" : "text-black"}>RAMESH</strong></div>
               <div>PHONES: <strong className={isDark ? "text-white" : "text-black"}>9443658583 / 7904694679</strong></div>
               <div>EMAIL: <strong className={isDark ? "text-white" : "text-black"}>sr.construction0711@gmail.com</strong></div>
-              <div>LOCATION: <strong className={isDark ? "text-white" : "text-black"}>Main Road, Cuddalore & Regional Sites, Tamil Nadu</strong></div>
+              <div>LOCATION: <strong className={isDark ? "text-white" : "text-black"}>Chennai, Tamil Nadu</strong></div>
+              <div>ADDRESS: <strong className={isDark ? "text-white" : "text-black"}>Madurapakkam Main Road, Mambakkam, Chennai, Tamil Nadu - 600127</strong></div>
             </div>
           </div>
 
           <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-neutral-500 text-[11px]">
-            <div>&copy; {new Date().getFullYear()} RAMESH &bull; RAMESH CONS / SR CONSTRUCTION. ALL RIGHTS RESERVED.</div>
+            <div>&copy; {new Date().getFullYear()} SR CONSTRUCTION &amp; RAMESH BUILDERS. ALL RIGHTS RESERVED.</div>
             <div className="mt-4 sm:mt-0 uppercase tracking-widest text-amber-500 font-bold">
               GOLDEN EMBLEM ARCHITECTURAL SPECIFICATION
             </div>
@@ -1980,7 +2062,7 @@ export default function App() {
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={18} className="text-amber-500" />
                     <span className="text-xs font-mono tracking-widest text-amber-500 uppercase font-bold">
-                      RAMESH • RAMESH CONS ADMINISTRATIVE DESK
+                      SR CONSTRUCTION &amp; RAMESH BUILDERS ADMINISTRATIVE DESK
                     </span>
                   </div>
                   <h2 className="text-2xl font-black uppercase mt-1">
@@ -2115,7 +2197,7 @@ export default function App() {
                           <label className="block uppercase mb-1 font-bold">LOCATION</label>
                           <input
                             type="text"
-                            placeholder="e.g. Cuddalore"
+                            placeholder="e.g. Chennai"
                             value={newProject.location}
                             onChange={(e) => setNewProject({ ...newProject, location: e.target.value })}
                             className={`w-full border p-3 font-sans text-xs focus:outline-none focus:border-amber-500 ${
@@ -2358,7 +2440,7 @@ export default function App() {
             </div>
 
             <div className="pt-8 border-t border-neutral-800 text-[10px] font-mono text-neutral-500 text-center">
-              SR CONSTRUCTION &bull; RAMESH . RAMESH CONS STUDIO INTERFACE &bull; FULL UNILATERAL CONTROL
+              SR CONSTRUCTION &amp; RAMESH BUILDERS STUDIO INTERFACE &bull; FULL UNILATERAL CONTROL
             </div>
           </div>
         </div>
