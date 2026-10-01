@@ -8,7 +8,6 @@ import {
   onSnapshot,
   orderBy,
   query,
-  runTransaction,
   serverTimestamp,
   updateDoc,
   where
@@ -187,7 +186,6 @@ export default function App() {
   const [adminTab, setAdminTab] = useState("projects");
   const [showPresetModal, setShowPresetModal] = useState(false);
   const adminFileInputRef = useRef(null);
-  const hasReviewsSnapshot = useRef(false);
   const projectCarouselRef = useRef(null);
   const reviewCarouselRef = useRef(null);
 
@@ -223,41 +221,7 @@ export default function App() {
     img: ""
   });
 
-  const [reviews, setReviews] = useState([
-    {
-      id: "REV-01",
-      author: "K. VENKATESH",
-      role: "Temple Trust Committee Head",
-      type: "Temple & Carving Project",
-      year: "2025",
-      rating: 5,
-      photo: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=1000&q=80",
-      text: "Ramesh sir and his team executed our temple mandapam and decorative stone carvings with awe-inspiring dedication. Every pillar was carved with traditional mastery and delivered on schedule.",
-      status: "approved"
-    },
-    {
-      id: "REV-02",
-      author: "SIVAKUMAR ANAND",
-      role: "Private Homeowner",
-      type: "Modern Elevation & Civil Build",
-      year: "2025",
-      rating: 5,
-      photo: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1000&q=80",
-      text: "The modern elevation design transformed our house completely. The exact look from the 3D model was turned into reality on the ground with zero compromises in build quality.",
-      status: "approved"
-    },
-    {
-      id: "REV-03",
-      author: "DR. ARCHANA RAO",
-      role: "Estate Owner",
-      type: "Turnkey Interior Design",
-      year: "2024",
-      rating: 5,
-      photo: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1000&q=80",
-      text: "SR Construction & Ramesh Builders provided attentive craftsmanship from the woodwork to lighting. Their team understands client requirements and makes spaces both functional and luxurious.",
-      status: "approved"
-    }
-  ]);
+  const [reviews, setReviews] = useState([]);
   const [inquiries, setInquiries] = useState([]);
   const [inquiryForm, setInquiryForm] = useState({ name: "", phone: "", email: "", scope: "Elevation Design", details: "" });
   const [inquirySuccessMsg, setInquirySuccessMsg] = useState("");
@@ -306,24 +270,14 @@ export default function App() {
       { includeMetadataChanges: true },
       (snapshot) => {
         if (snapshot.metadata.fromCache) return;
-        if (snapshot.empty && !hasReviewsSnapshot.current) return;
-        hasReviewsSnapshot.current = true;
         setReviews(snapshot.docs.map((reviewDoc) => ({ id: reviewDoc.id, ...reviewDoc.data() })));
       },
       (error) => console.error("Reviews listener failed:", error)
     );
-    const stopSeedMarker = onSnapshot(doc(db, "siteConfig", "initialContent"), (snapshot) => {
-      if (!snapshot.exists()) return;
-      if (!hasReviewsSnapshot.current) {
-        hasReviewsSnapshot.current = true;
-        setReviews([]);
-      }
-    }, (error) => console.error("Initial content marker listener failed:", error));
 
     if (userRole !== "admin") return () => {
       stopProjects();
       stopReviews();
-      stopSeedMarker();
     };
 
     const stopInquiries = onSnapshot(
@@ -335,7 +289,6 @@ export default function App() {
     return () => {
       stopProjects();
       stopReviews();
-      stopSeedMarker();
       stopInquiries();
     };
   }, [userRole]);
@@ -380,17 +333,6 @@ export default function App() {
         await signOut(auth);
         throw new Error("This Firebase account email is not authorized as an administrator.");
       }
-
-      await runTransaction(db, async (transaction) => {
-        const marker = doc(db, "siteConfig", "initialContent");
-        const markerSnapshot = await transaction.get(marker);
-        if (markerSnapshot.exists()) return;
-
-        transaction.set(marker, { initializedAt: serverTimestamp() });
-        reviews.forEach((review) => {
-          transaction.set(doc(db, "reviews", review.id), { ...review, createdAt: serverTimestamp() });
-        });
-      });
 
       setAuthModalOpen(false);
       setAdminPasswordInput("");
@@ -1372,13 +1314,24 @@ export default function App() {
             </button>
           </div>
 
-          <div
-            className="review-carousel"
-            ref={reviewCarouselRef}
-            role="region"
-            aria-label="Verified client reviews"
-            tabIndex={0}
-          >
+          {approvedReviews.length === 0 ? (
+            <div
+              role="status"
+              className={`border p-8 text-center text-sm font-mono uppercase leading-relaxed ${
+                isDark ? "border-neutral-800 text-neutral-400" : "border-neutral-300 text-neutral-600"
+              }`}
+            >
+              No reviews yet. Click 'SHARE YOUR EXPERIENCE' above to leave our first client review!
+            </div>
+          ) : (
+            <>
+              <div
+                className="review-carousel"
+                ref={reviewCarouselRef}
+                role="region"
+                aria-label="Verified client reviews"
+                tabIndex={0}
+              >
             {approvedReviews.map((rev) => (
               <div
                 key={rev.id}
@@ -1453,25 +1406,27 @@ export default function App() {
                 </div>
               </div>
             ))}
-          </div>
-          <div className="carousel-controls" aria-label="Review navigation">
-            <button
-              type="button"
-              onClick={() => scrollReviews(-1)}
-              className="carousel-control-button"
-              aria-label="Scroll to previous reviews"
-            >
-              <ChevronLeft size={20} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollReviews(1)}
-              className="carousel-control-button"
-              aria-label="Scroll to next reviews"
-            >
-              <ChevronRight size={20} aria-hidden="true" />
-            </button>
-          </div>
+              </div>
+              <div className="carousel-controls" aria-label="Review navigation">
+                <button
+                  type="button"
+                  onClick={() => scrollReviews(-1)}
+                  className="carousel-control-button"
+                  aria-label="Scroll to previous reviews"
+                >
+                  <ChevronLeft size={20} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollReviews(1)}
+                  className="carousel-control-button"
+                  aria-label="Scroll to next reviews"
+                >
+                  <ChevronRight size={20} aria-hidden="true" />
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </section>
 
