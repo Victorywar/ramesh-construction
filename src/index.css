@@ -15,10 +15,7 @@
   }
 }
 
-.review-carousel-shell {
-  position: relative;
-}
-
+.projects-carousel,
 .review-carousel {
   display: flex;
   gap: 2rem;
@@ -29,8 +26,20 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.projects-carousel-shell {
+  position: relative;
+  padding-inline: 3.25rem;
+}
+
+.projects-carousel::-webkit-scrollbar,
 .review-carousel::-webkit-scrollbar {
   display: none;
+}
+
+.project-card {
+  flex: 0 0 calc((100% - 2rem) / 2);
+  min-width: 0;
+  scroll-snap-align: start;
 }
 
 .review-card {
@@ -39,15 +48,19 @@
   scroll-snap-align: start;
 }
 
-.review-carousel-arrow {
-  position: absolute;
-  top: 50%;
-  z-index: 2;
+.carousel-controls {
   display: grid;
-  width: 48px;
+  grid-auto-flow: column;
+  justify-content: end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.carousel-control-button {
+  display: grid;
+  width: 44px;
   aspect-ratio: 1;
   place-items: center;
-  transform: translateY(-50%);
   color: #111;
   background: #f59e0b;
   border: 2px solid #fff;
@@ -55,15 +68,24 @@
   cursor: pointer;
 }
 
-.review-carousel-arrow-left {
-  left: 0;
+.project-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-50%);
 }
 
-.review-carousel-arrow-right {
-  right: 0;
+.project-carousel-arrow-left {
+  left: 0.25rem;
 }
 
-.review-carousel-arrow:focus-visible,
+.project-carousel-arrow-right {
+  right: 0.25rem;
+}
+
+.carousel-control-button:focus-visible,
+.projects-carousel:focus-visible,
+.projects-carousel-shell:focus-within,
 .review-carousel:focus-visible {
   outline: 3px solid #fff;
   outline-offset: 3px;
@@ -89,23 +111,29 @@
 }
 
 @media (max-width: 767px) {
+  .projects-carousel-shell {
+    padding-inline: 2.5rem;
+  }
+
+  .projects-carousel,
   .review-carousel {
     gap: 1rem;
   }
 
+  .project-card,
   .review-card {
     flex-basis: 83%;
   }
 
-  .review-carousel-arrow {
+  .carousel-control-button {
     width: 40px;
   }
 
-  .review-carousel-arrow-left {
-    left: 4px;
+  .project-carousel-arrow-left {
+    left: 0;
   }
 
-  .review-carousel-arrow-right {
-    right: 4px;
+  .project-carousel-arrow-right {
+    right: 0;
   }
 }

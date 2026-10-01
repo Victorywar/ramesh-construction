@@ -45,9 +45,85 @@ import {
   Moon
 } from "lucide-react";
 
-const BRAND_LOGO = `${import.meta.env.BASE_URL}image.png`;
+const publicAsset = (fileName) => `${import.meta.env.BASE_URL}${fileName}`;
+const BRAND_LOGO = publicAsset("logo.png");
 const firebaseConfigured = Boolean(auth && db);
 const ADMIN_EMAILS = new Set(["admin@srconstruction.com"]);
+
+const DEFAULT_PROJECTS = [
+  {
+    id: "default-project-01",
+    number: "01",
+    name: "MODERN ELEVATION VILLA",
+    category: "Elevation Design & Facade Lighting",
+    location: "Chennai, Tamil Nadu",
+    area: "",
+    year: "2026",
+    description: "Modern villa elevation with considered facade lighting.",
+    img: publicAsset("elevation-villa-night.jpg"),
+    isDefault: true
+  },
+  {
+    id: "default-project-02",
+    number: "02",
+    name: "BESPOKE MODULAR KITCHEN",
+    category: "Turnkey Interiors & Woodwork",
+    location: "Residential Interiors",
+    area: "",
+    year: "2026",
+    description: "A bespoke modular kitchen with warm woodwork finishes.",
+    img: publicAsset("modular-kitchen-wood.jpg"),
+    isDefault: true
+  },
+  {
+    id: "default-project-03",
+    number: "03",
+    name: "ARTISTIC WALL RELIEF & TAMIL CALLIGRAPHY",
+    category: "Stone & Plaster Artistry",
+    location: "Bespoke Residence",
+    area: "",
+    year: "2026",
+    description: "Custom wall relief combining plaster artistry and Tamil calligraphy.",
+    img: publicAsset("tamil-wall-art.jpg"),
+    isDefault: true
+  },
+  {
+    id: "default-project-04",
+    number: "04",
+    name: "SACRED SANCTUARY & WOODWORK",
+    category: "Sacred Architecture & Arches",
+    location: "Regional Project",
+    area: "",
+    year: "2026",
+    description: "Sacred interior architecture with detailed woodwork and arches.",
+    img: publicAsset("church-sanctuary-woodwork.jpg"),
+    isDefault: true
+  },
+  {
+    id: "default-project-05",
+    number: "05",
+    name: "UNDER-STAIRS CUSTOM STORAGE & GLASS RAILING",
+    category: "Interior Architecture",
+    location: "Custom Footprint",
+    area: "",
+    year: "2026",
+    description: "Custom under-stairs storage paired with a glass railing.",
+    img: publicAsset("understairs-interior.jpg"),
+    isDefault: true
+  },
+  {
+    id: "default-project-06",
+    number: "06",
+    name: "ACCENT PILLARS WITH AMBIENT LED",
+    category: "Decorative Wall Architecture",
+    location: "Chennai",
+    area: "",
+    year: "2026",
+    description: "Decorative architectural pillars accented with ambient LED lighting.",
+    img: publicAsset("accent-pillars-led.jpg"),
+    isDefault: true
+  }
+];
 
 function isAuthorizedAdmin(email) {
   return ADMIN_EMAILS.has(String(email || "").trim().toLowerCase());
@@ -87,37 +163,16 @@ async function compressImageFile(file) {
   throw new Error("This image could not be compressed small enough to store in Firestore.");
 }
 
-// Curated architectural fallback/starter presets representing Tamil Nadu & Modern Projects
 const STUDIO_PRESETS = [
+  ...DEFAULT_PROJECTS.map((project) => ({
+    title: project.name,
+    category: project.category,
+    url: project.img
+  })),
   {
-    title: "Dravidian Temple Sanctum & Gopuram",
-    category: "Temple Design",
-    url: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=1600&q=80"
-  },
-  {
-    title: "Intricate Stone & Wood Pillar Carving",
-    category: "Carving Work",
-    url: "https://images.unsplash.com/photo-1608889175123-8ee362201f81?auto=format&fit=crop&w=1600&q=80"
-  },
-  {
-    title: "Contemporary Double-Height Elevation Villa",
-    category: "Elevation Design",
-    url: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=80"
-  },
-  {
-    title: "Minimalist Teak Wood Living Interior",
+    title: "Cove Lighting & Plaster Finish",
     category: "Interior Design",
-    url: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1600&q=80"
-  },
-  {
-    title: "Solid RCC Multi-Storey Structural Build",
-    category: "Construction",
-    url: "https://images.unsplash.com/photo-1541888946425-d0fbb186c5f7?auto=format&fit=crop&w=1600&q=80"
-  },
-  {
-    title: "Commercial Facade Architectural Elevation",
-    category: "Elevation Design",
-    url: "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1600&q=80"
+    url: publicAsset("cove-lighting-plaster.jpg")
   }
 ];
 
@@ -145,46 +200,19 @@ export default function App() {
   const [showPresetModal, setShowPresetModal] = useState(false);
   const adminFileInputRef = useRef(null);
   const hasReviewsSnapshot = useRef(false);
+  const projectCarouselRef = useRef(null);
   const reviewCarouselRef = useRef(null);
 
   const [heroSlide, setHeroSlide] = useState(0);
   const [isHeroPaused, setIsHeroPaused] = useState(false);
 
   const [projects, setProjects] = useState([]);
-  const heroSlides = [
-    {
-      match: /civil|construction|turnkey/i,
-      title: "Residential Civil Construction",
-      category: "TURNKEY HOME EXECUTION",
-      img: "https://images.unsplash.com/photo-1541888946425-d0fbb186c5f7?auto=format&fit=crop&w=1600&q=80"
-    },
-    {
-      match: /elevation|facade/i,
-      title: "Modern Exterior Elevation",
-      category: "ELEVATION DESIGN & 3D FACADES",
-      img: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=80"
-    },
-    {
-      match: /temple|carving/i,
-      title: "Temple Gopuram & Mandapam",
-      category: "TEMPLE STONE CARVING WORKS",
-      img: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=1600&q=80"
-    },
-    {
-      match: /interior|woodwork/i,
-      title: "Bespoke Interior Woodwork",
-      category: "INTERIORS & LIVING SPACES",
-      img: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1600&q=80"
-    }
-  ].map((slide) => {
-    const project = projects.find((item) => slide.match.test(item.category || ""));
-    return {
-      title: project?.name || slide.title,
-      category: project?.category || slide.category,
-      year: project?.year || "2026",
-      img: project?.img || slide.img
-    };
-  });
+  const heroSlides = DEFAULT_PROJECTS.map((project) => ({
+    title: project.name,
+    category: project.category,
+    location: project.location,
+    img: project.img
+  }));
 
   const [selectedProject, setSelectedProject] = useState(null);
 
@@ -521,18 +549,34 @@ export default function App() {
     }
   };
 
-  const filteredProjects =
-    activeTab === "all"
-      ? projects
-      : projects.filter(
-          (p) => p.category.toLowerCase() === activeTab.toLowerCase()
-        );
+  const portfolioProjects = [...DEFAULT_PROJECTS, ...projects];
+  const projectFilters = {
+    "temple design": /temple|sacred architecture/i,
+    "elevation design": /elevation|facade/i,
+    "carving work": /carving|stone|plaster|artistry|calligraphy/i,
+    "interior design": /interior|woodwork|kitchen|storage/i,
+    construction: /construction|turnkey|civil/i
+  };
+  const filteredProjects = activeTab === "all"
+    ? portfolioProjects
+    : portfolioProjects.filter((project) => projectFilters[activeTab]?.test(project.category || ""));
 
   const approvedReviews = reviews.filter((r) => r.status === "approved");
   const pendingReviews = reviews.filter((r) => r.status === "pending");
   const scrollReviews = (direction) => {
     const carousel = reviewCarouselRef.current;
     const firstCard = carousel?.querySelector(".review-card");
+    if (!carousel || !firstCard) return;
+
+    const gap = Number.parseFloat(getComputedStyle(carousel).columnGap) || 0;
+    carousel.scrollBy({
+      left: direction * (firstCard.getBoundingClientRect().width + gap),
+      behavior: "smooth"
+    });
+  };
+  const scrollProjects = (direction) => {
+    const carousel = projectCarouselRef.current;
+    const firstCard = carousel?.querySelector(".project-card");
     if (!carousel || !firstCard) return;
 
     const gap = Number.parseFloat(getComputedStyle(carousel).columnGap) || 0;
@@ -788,7 +832,7 @@ export default function App() {
                       {heroSlides[heroSlide].title}
                     </div>
                     <div className="text-amber-400 text-[10px] tracking-wider mt-0.5">
-                      {heroSlides[heroSlide].category} &bull; {heroSlides[heroSlide].year}
+                      {heroSlides[heroSlide].category} &bull; {heroSlides[heroSlide].location}
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
@@ -1175,12 +1219,26 @@ export default function App() {
             </div>
           </div>
 
-          {/* Project Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="projects-carousel-shell">
+            <button
+              type="button"
+              onClick={() => scrollProjects(-1)}
+              className="carousel-control-button project-carousel-arrow project-carousel-arrow-left"
+              aria-label="Scroll to previous projects"
+            >
+              <ChevronLeft size={20} aria-hidden="true" />
+            </button>
+            <div
+              className="projects-carousel"
+              ref={projectCarouselRef}
+              role="region"
+              aria-label="Selected construction projects"
+              tabIndex={0}
+            >
             {filteredProjects.map((p) => (
               <div
                 key={p.id}
-                className={`group border flex flex-col justify-between overflow-hidden cursor-pointer transition-all relative ${
+                className={`project-card group border flex flex-col justify-between overflow-hidden cursor-pointer transition-all relative ${
                   isDark
                     ? "border-neutral-800 bg-black hover:border-neutral-600"
                     : "border-neutral-300 bg-white hover:border-neutral-900 shadow-sm"
@@ -1201,7 +1259,7 @@ export default function App() {
                   </div>
 
                   {/* Admin Fast Delete Overlay Button directly on card */}
-                  {userRole === "admin" && (
+                  {userRole === "admin" && !p.isDefault && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1248,6 +1306,15 @@ export default function App() {
                 </div>
               </div>
             ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => scrollProjects(1)}
+              className="carousel-control-button project-carousel-arrow project-carousel-arrow-right"
+              aria-label="Scroll to next projects"
+            >
+              <ChevronRight size={20} aria-hidden="true" />
+            </button>
           </div>
 
           {filteredProjects.length === 0 && (
@@ -1309,22 +1376,13 @@ export default function App() {
             </button>
           </div>
 
-          <div className="review-carousel-shell">
-            <button
-              type="button"
-              onClick={() => scrollReviews(-1)}
-              className="review-carousel-arrow review-carousel-arrow-left"
-              aria-label="Scroll to previous reviews"
-            >
-              <ChevronLeft size={22} aria-hidden="true" />
-            </button>
-            <div
-              className="review-carousel"
-              ref={reviewCarouselRef}
-              role="region"
-              aria-label="Verified client reviews"
-              tabIndex={0}
-            >
+          <div
+            className="review-carousel"
+            ref={reviewCarouselRef}
+            role="region"
+            aria-label="Verified client reviews"
+            tabIndex={0}
+          >
             {approvedReviews.map((rev) => (
               <div
                 key={rev.id}
@@ -1399,14 +1457,23 @@ export default function App() {
                 </div>
               </div>
             ))}
-            </div>
+          </div>
+          <div className="carousel-controls" aria-label="Review navigation">
+            <button
+              type="button"
+              onClick={() => scrollReviews(-1)}
+              className="carousel-control-button"
+              aria-label="Scroll to previous reviews"
+            >
+              <ChevronLeft size={20} aria-hidden="true" />
+            </button>
             <button
               type="button"
               onClick={() => scrollReviews(1)}
-              className="review-carousel-arrow review-carousel-arrow-right"
+              className="carousel-control-button"
               aria-label="Scroll to next reviews"
             >
-              <ChevronRight size={22} aria-hidden="true" />
+              <ChevronRight size={20} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -1671,12 +1738,15 @@ export default function App() {
             {/* Logo and Brand summary */}
             <div className="md:col-span-5">
               <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-sm overflow-hidden border border-amber-500/50 bg-neutral-900 p-0.5 shrink-0">
+                <div className="w-11 h-11 rounded-sm overflow-hidden border border-amber-500/50 bg-neutral-900 p-0.5 shrink-0">
                   <img src={BRAND_LOGO} alt="SR Construction & Ramesh Builders Logo" className="w-full h-full object-cover" />
                 </div>
                 <div>
                   <div className={`font-black text-sm uppercase ${isDark ? "text-white" : "text-black"}`}>
-                    SR CONSTRUCTION &amp; RAMESH BUILDERS
+                    SR CONSTRUCTION
+                  </div>
+                  <div className="text-[10px] text-amber-500 font-mono uppercase tracking-widest font-bold">
+                    RAMESH BUILDERS
                   </div>
                 </div>
               </div>
