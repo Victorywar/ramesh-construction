@@ -90,18 +90,6 @@ const DEFAULT_PROJECTS = [
   {
     id: "default-project-04",
     number: "04",
-    name: "SACRED SANCTUARY & WOODWORK",
-    category: "Sacred Architecture & Arches",
-    location: "Regional Project",
-    area: "",
-    year: "2026",
-    description: "Sacred interior architecture with detailed woodwork and arches.",
-    img: publicAsset("church-sanctuary-woodwork.jpg"),
-    isDefault: true
-  },
-  {
-    id: "default-project-05",
-    number: "05",
     name: "UNDER-STAIRS CUSTOM STORAGE & GLASS RAILING",
     category: "Interior Architecture",
     location: "Custom Footprint",
@@ -112,8 +100,8 @@ const DEFAULT_PROJECTS = [
     isDefault: true
   },
   {
-    id: "default-project-06",
-    number: "06",
+    id: "default-project-05",
+    number: "05",
     name: "ACCENT PILLARS WITH AMBIENT LED",
     category: "Decorative Wall Architecture",
     location: "Chennai",
@@ -207,12 +195,20 @@ export default function App() {
   const [isHeroPaused, setIsHeroPaused] = useState(false);
 
   const [projects, setProjects] = useState([]);
-  const heroSlides = DEFAULT_PROJECTS.map((project) => ({
-    title: project.name,
-    category: project.category,
-    location: project.location,
-    img: project.img
-  }));
+  const heroSlides = [
+    ...DEFAULT_PROJECTS.map((project) => ({
+      title: project.name,
+      category: project.category,
+      location: project.location,
+      img: project.img
+    })),
+    {
+      title: "COVE LIGHTING & PLASTER FINISH",
+      category: "INTERIOR LIGHTING & PLASTERWORK",
+      location: "Residential Interiors",
+      img: publicAsset("cove-lighting-plaster.jpg")
+    }
+  ];
 
   const [selectedProject, setSelectedProject] = useState(null);
 
@@ -1219,22 +1215,13 @@ export default function App() {
             </div>
           </div>
 
-          <div className="projects-carousel-shell">
-            <button
-              type="button"
-              onClick={() => scrollProjects(-1)}
-              className="carousel-control-button project-carousel-arrow project-carousel-arrow-left"
-              aria-label="Scroll to previous projects"
-            >
-              <ChevronLeft size={20} aria-hidden="true" />
-            </button>
-            <div
-              className="projects-carousel"
-              ref={projectCarouselRef}
-              role="region"
-              aria-label="Selected construction projects"
-              tabIndex={0}
-            >
+          <div
+            className="projects-carousel"
+            ref={projectCarouselRef}
+            role="region"
+            aria-label="Selected construction projects"
+            tabIndex={0}
+          >
             {filteredProjects.map((p) => (
               <div
                 key={p.id}
@@ -1306,11 +1293,20 @@ export default function App() {
                 </div>
               </div>
             ))}
-            </div>
+          </div>
+          <div className="carousel-controls" aria-label="Selected works navigation">
+            <button
+              type="button"
+              onClick={() => scrollProjects(-1)}
+              className="carousel-control-button"
+              aria-label="Scroll to previous projects"
+            >
+              <ChevronLeft size={20} aria-hidden="true" />
+            </button>
             <button
               type="button"
               onClick={() => scrollProjects(1)}
-              className="carousel-control-button project-carousel-arrow project-carousel-arrow-right"
+              className="carousel-control-button"
               aria-label="Scroll to next projects"
             >
               <ChevronRight size={20} aria-hidden="true" />
