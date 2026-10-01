@@ -1180,10 +1180,7 @@ export default function App() {
                     alt={p.name}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
-                  <div className="absolute top-3 left-3 bg-black/85 text-white px-2.5 py-1 text-[10px] font-mono tracking-widest uppercase border border-neutral-700">
-                    PROJECT {p.number}
-                  </div>
-                  <div className="absolute top-3 right-3 bg-amber-500 text-black font-black px-2.5 py-0.5 text-[10px] uppercase tracking-wider">
+                  <div className="absolute top-3 right-3 max-w-[calc(100%-1.5rem)] whitespace-normal break-words bg-amber-500 text-right text-black font-black px-2.5 py-1.5 text-[10px] uppercase leading-tight tracking-wider">
                     {p.category}
                   </div>
 
