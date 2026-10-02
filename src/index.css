@@ -11,6 +11,7 @@
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 500;
     -webkit-font-smoothing: antialiased;
   }
 }

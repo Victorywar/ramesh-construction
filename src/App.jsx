@@ -701,13 +701,13 @@ export default function App() {
               >
                 WE BUILD.
                 <br />
-                <span className={isDark ? "text-neutral-500" : "text-neutral-400"}>
+                <span className={isDark ? "text-neutral-300" : "text-neutral-500"}>
                   YOU IMAGINE.
                 </span>
               </h1>
 
               <p
-                className={`mt-6 sm:mt-8 text-sm sm:text-base md:text-lg max-w-xl font-light leading-relaxed ${
+                className={`mt-6 sm:mt-8 text-sm sm:text-base md:text-lg max-w-xl font-medium leading-relaxed ${
                   isDark ? "text-neutral-300" : "text-neutral-700"
                 }`}
               >
@@ -836,14 +836,14 @@ export default function App() {
             <div className="lg:col-span-6 flex flex-col justify-between space-y-6">
               <div className="space-y-4">
                 <p
-                  className={`text-base sm:text-lg font-normal leading-relaxed ${
+                  className={`text-base sm:text-lg font-medium leading-relaxed ${
                     isDark ? "text-neutral-200" : "text-neutral-800"
                   }`}
                 >
                   <strong className="font-bold">SR Construction &amp; Ramesh Builders</strong> is a dedicated construction and design practice specializing in elevation design, interior design, temple architecture, and detailed carving work.
                 </p>
                 <p
-                  className={`text-sm sm:text-base font-normal leading-relaxed ${
+                  className={`text-sm sm:text-base font-medium leading-relaxed ${
                     isDark ? "text-neutral-200" : "text-neutral-800"
                   }`}
                 >
@@ -874,7 +874,7 @@ export default function App() {
                     01. PRECISION
                   </div>
                   <p
-                    className={`mt-2 text-sm font-normal leading-relaxed ${
+                    className={`mt-2 text-sm font-medium leading-relaxed ${
                       isDark ? "text-neutral-200" : "text-neutral-800"
                     }`}
                   >
@@ -890,7 +890,7 @@ export default function App() {
                     02. QUALITY
                   </div>
                   <p
-                    className={`mt-2 text-sm font-normal leading-relaxed ${
+                    className={`mt-2 text-sm font-medium leading-relaxed ${
                       isDark ? "text-neutral-200" : "text-neutral-800"
                     }`}
                   >
@@ -906,7 +906,7 @@ export default function App() {
                     03. TRUST
                   </div>
                   <p
-                    className={`mt-2 text-sm font-normal leading-relaxed ${
+                    className={`mt-2 text-sm font-medium leading-relaxed ${
                       isDark ? "text-neutral-200" : "text-neutral-800"
                     }`}
                   >
@@ -969,7 +969,7 @@ export default function App() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono text-amber-500 font-bold">01 — SPECIALIZATION</span>
-                <Sparkles size={16} className="text-neutral-500 group-hover:text-amber-500 transition-colors" />
+                <Sparkles size={16} className="text-neutral-300 group-hover:text-amber-500 transition-colors" />
               </div>
               <h3
                 className={`mt-6 text-xl font-black uppercase tracking-tight ${
@@ -997,7 +997,7 @@ export default function App() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono text-amber-500 font-bold">02 — SPECIALIZATION</span>
-                <Layers size={16} className="text-neutral-500 group-hover:text-amber-500 transition-colors" />
+                <Layers size={16} className="text-neutral-300 group-hover:text-amber-500 transition-colors" />
               </div>
               <h3
                 className={`mt-6 text-xl font-black uppercase tracking-tight ${
@@ -1025,7 +1025,7 @@ export default function App() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono text-amber-500 font-bold">03 — SPECIALIZATION</span>
-                <Compass size={16} className="text-neutral-500 group-hover:text-amber-500 transition-colors" />
+                <Compass size={16} className="text-neutral-300 group-hover:text-amber-500 transition-colors" />
               </div>
               <h3
                 className={`mt-6 text-xl font-black uppercase tracking-tight ${
@@ -1053,7 +1053,7 @@ export default function App() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono text-amber-500 font-bold">04 — SPECIALIZATION</span>
-                <Building size={16} className="text-neutral-500 group-hover:text-amber-500 transition-colors" />
+                <Building size={16} className="text-neutral-300 group-hover:text-amber-500 transition-colors" />
               </div>
               <h3
                 className={`mt-6 text-xl font-black uppercase tracking-tight ${
@@ -1081,7 +1081,7 @@ export default function App() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono text-amber-500 font-bold">05 — SPECIALIZATION</span>
-                <Building2 size={16} className="text-neutral-500 group-hover:text-amber-500 transition-colors" />
+                <Building2 size={16} className="text-neutral-300 group-hover:text-amber-500 transition-colors" />
               </div>
               <h3
                 className={`mt-6 text-xl font-black uppercase tracking-tight ${
@@ -1167,18 +1167,18 @@ export default function App() {
             {filteredProjects.map((p) => (
               <div
                 key={p.id}
-                className={`project-card group border flex flex-col justify-between overflow-hidden cursor-pointer transition-all relative ${
+                className={`project-card group border overflow-hidden cursor-pointer transition-all relative ${
                   isDark
                     ? "border-neutral-800 bg-black hover:border-neutral-600"
                     : "border-neutral-300 bg-white hover:border-neutral-900 shadow-sm"
                 }`}
                 onClick={() => setSelectedProject(p)}
               >
-                <div className="relative aspect-[16/10] w-full overflow-hidden bg-neutral-900">
+                <div className="relative h-[340px] sm:h-[420px] w-full overflow-hidden bg-neutral-900">
                   <img
                     src={p.img}
                     alt={p.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    className="w-full h-full object-contain"
                   />
                   <div className="absolute top-3 right-3 max-w-[calc(100%-1.5rem)] whitespace-normal break-words bg-amber-500 text-right text-black font-black px-2.5 py-1.5 text-[10px] uppercase leading-tight tracking-wider">
                     {p.category}
@@ -1199,37 +1199,6 @@ export default function App() {
                   )}
                 </div>
 
-                <div
-                  className={`p-6 flex items-center justify-between border-t ${
-                    isDark ? "border-neutral-800" : "border-neutral-200"
-                  }`}
-                >
-                  <div>
-                    <h3
-                      className={`text-lg sm:text-xl font-bold uppercase tracking-tight ${
-                        isDark ? "text-white" : "text-neutral-950"
-                      }`}
-                    >
-                      {p.name}
-                    </h3>
-                    <div
-                      className={`text-xs font-mono mt-1 ${
-                        isDark ? "text-neutral-400" : "text-neutral-600"
-                      }`}
-                    >
-                      {p.location} &bull; {p.area}
-                    </div>
-                  </div>
-                  <div
-                    className={`p-2 border transition-colors ${
-                      isDark
-                        ? "border-neutral-700 text-neutral-300 group-hover:border-white group-hover:text-white"
-                        : "border-neutral-300 text-neutral-700 group-hover:border-black group-hover:text-black"
-                    }`}
-                  >
-                    <ArrowUpRight size={18} />
-                  </div>
-                </div>
               </div>
             ))}
           </div>
@@ -1254,7 +1223,7 @@ export default function App() {
 
           {filteredProjects.length === 0 && (
             <div className={`p-12 text-center border font-mono text-xs uppercase ${
-              isDark ? "border-neutral-800 text-neutral-500" : "border-neutral-300 text-neutral-600"
+              isDark ? "border-neutral-800 text-neutral-300" : "border-neutral-300 text-neutral-600"
             }`}>
               No projects found in this category.
             </div>
@@ -1373,7 +1342,7 @@ export default function App() {
                   </div>
 
                   <p
-                    className={`text-xs sm:text-sm font-light uppercase leading-relaxed font-sans ${
+                    className={`text-xs sm:text-sm font-medium uppercase leading-relaxed font-sans ${
                       isDark ? "text-neutral-200" : "text-neutral-800"
                     }`}
                   >
@@ -1456,7 +1425,7 @@ export default function App() {
               </h2>
 
               <p
-                className={`mt-6 text-sm leading-relaxed font-light ${
+                className={`mt-6 text-sm leading-relaxed font-medium ${
                   isDark ? "text-neutral-300" : "text-neutral-700"
                 }`}
               >
@@ -1732,7 +1701,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-neutral-500 text-[11px]">
+          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-neutral-300 text-[11px] font-medium">
             <div>&copy; {new Date().getFullYear()} SR CONSTRUCTION &amp; RAMESH BUILDERS. ALL RIGHTS RESERVED.</div>
             <div className="mt-4 sm:mt-0 uppercase tracking-widest text-amber-500 font-bold">
               GOLDEN EMBLEM ARCHITECTURAL SPECIFICATION
